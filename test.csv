@@ -1,0 +1,11 @@
+patient_id,name,age,sex,cp,trestbps,chol,fbs,restecg,thalach,exang
+P001,Rahul Sharma,45,1,1,120,200,0,0,170,0
+P002,Priya Mehta,54,0,2,130,240,0,1,150,0
+P003,Amit Verma,60,1,3,140,260,1,1,130,1
+P004,Neha Kapoor,50,0,0,125,210,0,0,165,0
+P005,Rajesh Singh,65,1,2,150,300,1,2,120,1
+P006,Anjali Desai,39,0,1,110,180,0,0,180,0
+P007,Vikram Joshi,58,1,3,145,270,0,1,135,1
+P008,Sunita Reddy,62,0,0,160,320,1,2,110,1
+P009,Karan Malhotra,47,1,2,135,230,0,1,155,0
+P010,Meera Iyer,70,0,3,170,350,1,2,100,1

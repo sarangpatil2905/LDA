@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Disease Predictor · LDA</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,700;1,300&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #080c10; --surface: #0d1117; --border: #1a2332;
+            --text: #e2e8f0; --muted: #64748b; --accent: #38bdf8;
+            --green: #22c55e; --red: #ef4444; --yellow: #facc15;
+            --mono: "DM Mono", monospace; --serif: "Fraunces", serif;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg); color: var(--text); font-family: var(--mono);
+            display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56,189,248,.07), transparent);
+        }
+        .header { text-align: center; margin-bottom: 2rem; }
+        .header h1 { font-family: var(--serif); font-size: 2.5rem; color: var(--text); }
+        
+        .mode-selector { display: flex; gap: 10px; margin-bottom: 2rem; }
+        .mode-btn { 
+            background: var(--surface); border: 1px solid var(--border); color: var(--muted);
+            padding: 8px 16px; border-radius: 6px; cursor: pointer; font-family: var(--mono);
+            transition: 0.2s;
+        }
+        .mode-btn.active { border-color: var(--accent); color: var(--accent); }
+        .mode-btn:hover { border-color: var(--accent); }
+
+        .container { width: 100%; max-width: 800px; display: grid; gap: 20px; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; }
+        .card-title { font-size: .7rem; color: var(--muted); text-transform: uppercase; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+
+        .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        label { display: block; font-size: .65rem; color: var(--muted); margin-bottom: 4px; }
+        input, select { 
+            width: 100%; background: var(--bg); border: 1px solid var(--border); 
+            color: var(--text); padding: 8px; border-radius: 4px; font-family: var(--mono); 
+        }
+        .btn { 
+            width: 100%; padding: 12px; background: var(--accent); color: #000; 
+            border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 20px;
+        }
+        .btn:disabled { opacity: 0.5; }
+
+        /* Result Styles */
+        .result-card { display: none; }
+        .verdict { font-family: var(--serif); font-size: 2rem; margin-bottom: 10px; }
+        .verdict.red { color: var(--red); }
+        .verdict.green { color: var(--green); }
+        .plot-box { margin-top: 15px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #000; }
+        .plot-box img { width: 100%; display: block; }
+
+        /* Table Styles */
+        .table-wrap { overflow-x: auto; margin-top: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal-content { max-width: 700px; width: 100%; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <h1>Heart Disease Predictor</h1>
+        <p style="color: var(--muted)">Model-Synchronized LDA Classification</p>
+    </header>
+
+    <div class="mode-selector">
+        <button class="mode-btn active" onclick="setMode('single')">Single Patient</button>
+        <button class="mode-btn" onclick="setMode('batch')">Batch CSV</button>
+    </div>
+
+    <div class="container">
+        <div class="card" id="input-card">
+            <div id="single-inputs">
+                <p class="card-title">Patient Data</p>
+                <div class="field-grid">
+                    <div class="field"><label>Age (20-100)</label><input type="number" id="age" value="55"></div>
+                    <div class="field"><label>Sex</label><select id="sex"><option value="1">Male</option><option value="0">Female</option></select></div>
+                    <div class="field"><label>Chest Pain (0-3)</label><select id="cp"><option value="0">Typical</option><option value="1">Atypical</option><option value="2">Non-Anginal</option><option value="3">Asymptomatic</option></select></div>
+                    <div class="field"><label>Resting BP</label><input type="number" id="trestbps" value="130"></div>
+                    <div class="field"><label>Cholesterol</label><input type="number" id="chol" value="246"></div>
+                    <div class="field"><label>Fasting Sugar > 120</label><select id="fbs"><option value="0">No</option><option value="1">Yes</option></select></div>
+                    <div class="field"><label>Rest ECG (0-2)</label><select id="restecg"><option value="0">Normal</option><option value="1">ST-T Abnormality</option><option value="2">LVH</option></select></div>
+                    <div class="field"><label>Max Heart Rate</label><input type="number" id="thalach" value="150"></div>
+                    <div class="field"><label>Exercise Angina</label><select id="exang"><option value="0">No</option><option value="1">Yes</option></select></div>
+                </div>
+                <button class="btn" onclick="runSingle()">Run Prediction</button>
+            </div>
+
+            <div id="batch-inputs" class="hidden">
+                <p class="card-title">CSV Upload</p>
+                <input type="file" id="csv-file" accept=".csv">
+                <p style="font-size: 0.6rem; color: var(--muted); margin-top: 10px;">CSV columns: ID, Name, age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang</p>
+                <button class="btn" onclick="runBatch()">Process Batch</button>
+            </div>
+        </div>
+
+        <div class="card result-card" id="result-card">
+            <p class="card-title">Results</p>
+            <div id="single-result-view">
+                <div class="verdict" id="verdict-text">---</div>
+                <p id="confidence-text" style="color: var(--muted)"></p>
+                <div class="plot-box"><img id="res-plot" src="" alt="LDA Plot"></div>
+            </div>
+            <div id="batch-result-view" class="hidden">
+                <div class="table-wrap">
+                    <table id="batch-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Prediction</th>
+                                <th>Confidence</th>
+                                <th>Analysis</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="graph-modal" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-content card" onclick="event.stopPropagation()">
+            <p class="card-title" id="modal-patient-name">Analysis Plot</p>
+            <div class="plot-box">
+                <img id="modal-img" src="" alt="LDA Plot">
+            </div>
+            <button class="btn" onclick="closeModal()" style="background: var(--surface); color: var(--text); border: 1px solid var(--border)">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+
+        function setMode(mode) {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('single-inputs').classList.toggle('hidden', mode !== 'single');
+            document.getElementById('batch-inputs').classList.toggle('hidden', mode !== 'batch');
+            document.getElementById('result-card').style.display = 'none';
+        }
+
+        async function runSingle() {
+            const payload = {
+                age: parseFloat(document.getElementById('age').value),
+                sex: parseInt(document.getElementById('sex').value),
+                cp: parseInt(document.getElementById('cp').value),
+                trestbps: parseFloat(document.getElementById('trestbps').value),
+                chol: parseFloat(document.getElementById('chol').value),
+                fbs: parseInt(document.getElementById('fbs').value),
+                restecg: parseInt(document.getElementById('restecg').value),
+                thalach: parseFloat(document.getElementById('thalach').value),
+                exang: parseInt(document.getElementById('exang').value)
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/predict`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                displaySingle(data);
+            } catch (err) { alert("Server Connection Error"); }
+        }
+
+        function displaySingle(data) {
+            document.getElementById('single-result-view').classList.remove('hidden');
+            document.getElementById('batch-result-view').classList.add('hidden');
+            const verd = document.getElementById('verdict-text');
+            verd.textContent = data.prediction;
+            verd.className = `verdict ${data.prediction.includes("No") ? 'green' : 'red'}`;
+            document.getElementById('confidence-text').textContent = `Confidence: ${(data.confidence * 100).toFixed(2)}%`;
+            document.getElementById('res-plot').src = `data:image/png;base64,${data.plot_base64}`;
+            document.getElementById('result-card').style.display = 'block';
+        }
+
+        async function runBatch() {
+            const file = document.getElementById('csv-file').files[0];
+            if (!file) return alert("Select a CSV file");
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const rows = e.target.result.split('\n').slice(1).filter(r => r.trim());
+                const tbody = document.querySelector('#batch-table tbody');
+                
+                document.getElementById('single-result-view').classList.add('hidden');
+                document.getElementById('batch-result-view').classList.remove('hidden');
+                document.getElementById('result-card').style.display = 'block';
+                tbody.innerHTML = "<tr><td colspan='5'>Processing records...</td></tr>";
+
+                const resultsHTML = [];
+
+                for (let row of rows) {
+                    const cols = row.split(',');
+                    const payload = {
+                        age: parseFloat(cols[2]), sex: parseInt(cols[3]), cp: parseInt(cols[4]),
+                        trestbps: parseFloat(cols[5]), chol: parseFloat(cols[6]), fbs: parseInt(cols[7]),
+                        restecg: parseInt(cols[8]), thalach: parseFloat(cols[9]), exang: parseInt(cols[10])
+                    };
+
+                    try {
+                        const res = await fetch(`${API_URL}/predict`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json();
+                        
+                        // Create row with button that stores plot in a closure
+                        const tr = document.createElement('tr');
+                        const isSafe = data.prediction.includes("No");
+                        
+                        tr.innerHTML = `
+                            <td>${cols[0]}</td>
+                            <td>${cols[1]}</td>
+                            <td style="color: ${isSafe ? 'var(--green)' : 'var(--red)'}">${data.prediction}</td>
+                            <td>${(data.confidence * 100).toFixed(1)}%</td>
+                            <td><button class="mode-btn" style="padding: 4px 8px; font-size: 0.6rem">View Graph</button></td>
+                        `;
+
+                        // Add event listener to button to open modal
+                        tr.querySelector('button').onclick = () => showModalPlot(data.plot_base64, cols[1]);
+                        resultsHTML.push(tr);
+                    } catch (err) { console.error("Row error", err); }
+                }
+
+                tbody.innerHTML = "";
+                resultsHTML.forEach(tr => tbody.appendChild(tr));
+            };
+            reader.readAsText(file);
+        }
+
+        function showModalPlot(base64, name) {
+            document.getElementById('modal-img').src = `data:image/png;base64,${base64}`;
+            document.getElementById('modal-patient-name').textContent = `LDA Analysis: ${name}`;
+            document.getElementById('graph-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('graph-modal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
