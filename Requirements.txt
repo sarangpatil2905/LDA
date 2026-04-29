@@ -24,4 +24,5 @@ annotated-doc==0.0.4
 typing-inspection==0.4.2
 python-multipart==0.0.9
 seaborn==0.13.2
+
 statsmodels==0.14.6
